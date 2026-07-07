@@ -47,11 +47,12 @@ local function get_dit_break_limits()
 end
 
 -- Matches Disassembly Item Tweaks is_breaking() — stricter than degrade alone.
+-- degr_val must already be resolved by the caller (both call sites pull it from the same
+-- diss_tools table built once in redirect_to_lowest_stack) -- don't re-look it up here.
 local function tool_would_break(tool_obj, degr_val, limits)
 	if not tool_obj then
 		return true
 	end
-	degr_val = degr_val or GetItemList("disassemble")[tool_obj:section()]
 	if not degr_val or degr_val <= 0 then
 		return false
 	end
@@ -71,7 +72,6 @@ local function tool_survives_use(tool_obj, degr_val, limits)
 	if not tool_obj then
 		return false
 	end
-	degr_val = degr_val or GetItemList("disassemble")[tool_obj:section()]
 	if degr_val and degr_val > 0 and tool_obj:condition() <= degr_val then
 		return false
 	end
@@ -129,7 +129,7 @@ local function redirect_to_lowest_stack(obj_d, note)
 		))
 		return optimal
 	end
-	if optimal and CONFIG.debug_log then
+	if optimal then
 		log(string.format("%s %s cond=%.3f (same stack)", note or "pick", sec, optimal:condition()))
 	end
 	return optimal or obj_d
