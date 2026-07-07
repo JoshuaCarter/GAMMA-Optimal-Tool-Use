@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="ui_mcm_menu_dorn_optimal_tool_use">
+		<text>Dorn's Optimal Tool Use</text>
+	</string>
+	<string id="ui_mcm_dorn_optimal_tool_use_main_section">
+		<text>Main</text>
+	</string>
+	<string id="ui_mcm_dorn_optimal_tool_use_main_description">
+		<text>Auto-selects the lowest-condition tool that will still survive the use. Drag-and-drop redirects wear to the lowest stack of the same tool type instead of the top-of-stack one you dragged.</text>
+	</string>
+	<string id="ui_mcm_dorn_optimal_tool_use_enabled">
+		<text>Enabled</text>
+	</string>
+	<string id="ui_mcm_dorn_optimal_tool_use_enabled_desc">
+		<text>Use optimal tool selection for auto disassembly.</text>
+	</string>
+	<string id="ui_mcm_dorn_optimal_tool_use_development_section">
+		<text>Development</text>
+	</string>
+	<string id="ui_mcm_dorn_optimal_tool_use_debug_log">
+		<text>Debug log</text>
+	</string>
+	<string id="ui_mcm_dorn_optimal_tool_use_debug_log_desc">
+		<text>Log which tool was auto-selected for disassembly.</text>
+	</string>
+</string_table>

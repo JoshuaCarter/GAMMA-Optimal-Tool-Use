@@ -1,0 +1,41 @@
+function on_mcm_load()
+	return {
+		id = "dorn_optimal_tool_use",
+		text = "ui_mcm_menu_dorn_optimal_tool_use",
+		gr = {
+			{
+				id = "main",
+				sh = true,
+				text = "ui_mcm_dorn_optimal_tool_use_main_section",
+				gr = {
+					{
+						id = "main_description",
+						type = "desc",
+						text = "ui_mcm_dorn_optimal_tool_use_main_description",
+					},
+					{
+						id = "enabled",
+						type = "check",
+						val = 1,
+						def = true,
+						hint = "dorn_optimal_tool_use_enabled",
+					},
+				},
+			},
+			{
+				id = "development",
+				sh = true,
+				text = "ui_mcm_dorn_optimal_tool_use_development_section",
+				gr = {
+					{
+						id = "debug_log",
+						type = "check",
+						val = 1,
+						def = false,
+						hint = "dorn_optimal_tool_use_debug_log",
+					},
+				},
+			},
+		},
+	}
+end
