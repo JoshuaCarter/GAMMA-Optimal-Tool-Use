@@ -18,12 +18,6 @@
 	<string id="ui_mcm_dorn_optimal_tool_use_development_section">
 		<text>Development</text>
 	</string>
-	<string id="ui_mcm_dorn_optimal_tool_use_debug_overlay">
-		<text>Enable debug overlay</text>
-	</string>
-	<string id="ui_mcm_dorn_optimal_tool_use_debug_overlay_desc">
-		<text>Show which tool was auto-selected for disassembly in the debug overlay.</text>
-	</string>
 	<string id="ui_mcm_dorn_optimal_tool_use_debug_log">
 		<text>Enable debug logging</text>
 	</string>
