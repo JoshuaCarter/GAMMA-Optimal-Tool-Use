@@ -1,0 +1,180 @@
+--[[
+	Dorn's Optimal Tool Use
+
+	GAMMA (Disassembly Item Tweaks) already picks the worst tool *type* for each
+	item (grooming < swiss < leatherman). We must not change that — only redirect
+	wear to the lowest-condition stack of whatever type was chosen.
+
+	Loads late (zzzz_) so we wrap whatever func_disassembly / get_suitable_dtool
+	GAMMA mods installed last.
+]]
+
+local MOD_ID = "dorn_optimal_tool_use"
+local DORN_COMMON_VERSION = "dorn_common_7367f5e7" -- managed by sync-dorn-common.sh, do not hand-edit
+
+local DORN
+
+local CONFIG = {
+	enabled = true,
+	debug_log = false,
+}
+
+local LOG = {
+	PICK = { order = 0, color = "green" },
+}
+
+local orig_get_suitable_dtool = nil
+local orig_func_disassembly = nil
+
+local function log(msg)
+	if DORN and DORN.dbg and CONFIG.debug_log then
+		DORN.dbg.write(MOD_ID, LOG.PICK.order, "[ToolUse] " .. tostring(msg), LOG.PICK.color)
+	end
+end
+
+local function on_option_change()
+	CONFIG.enabled = DORN.mcm.bool(MOD_ID, "main/enabled", true)
+	CONFIG.debug_log = DORN.mcm.bool(MOD_ID, "development/debug_log", false)
+	DORN.dbg.set_enabled(MOD_ID, CONFIG.debug_log)
+end
+
+local function get_dit_break_limits()
+	local limits = { leatherman_limit = 10, swiss_limit = 10, grooming_limit = 10 }
+	if dit_mcm and dit_mcm.get_config then
+		limits.leatherman_limit = dit_mcm.get_config("leatherman_limit") or limits.leatherman_limit
+		limits.swiss_limit = dit_mcm.get_config("swiss_limit") or limits.swiss_limit
+		limits.grooming_limit = dit_mcm.get_config("grooming_limit") or limits.grooming_limit
+	end
+	return limits
+end
+
+-- Matches Disassembly Item Tweaks is_breaking() — stricter than degrade alone.
+local function tool_would_break(tool_obj, degr_val, limits)
+	if not tool_obj then
+		return true
+	end
+	degr_val = degr_val or GetItemList("disassemble")[tool_obj:section()]
+	if not degr_val or degr_val <= 0 then
+		return false
+	end
+	local sec = tool_obj:section()
+	local margin = 0
+	if sec == "leatherman_tool" then
+		margin = limits.leatherman_limit / 100
+	elseif sec == "swiss_knife" then
+		margin = limits.swiss_limit / 100
+	elseif sec == "grooming" then
+		margin = limits.grooming_limit / 100
+	end
+	return degr_val >= (tool_obj:condition() - margin)
+end
+
+local function tool_survives_use(tool_obj, degr_val, limits)
+	if not tool_obj then
+		return false
+	end
+	degr_val = degr_val or GetItemList("disassemble")[tool_obj:section()]
+	if degr_val and degr_val > 0 and tool_obj:condition() <= degr_val then
+		return false
+	end
+	return not tool_would_break(tool_obj, degr_val, limits)
+end
+
+local function collect_inventory(filter_fn)
+	local out = {}
+	if not db.actor then
+		return out
+	end
+	db.actor:iterate_inventory(function(_, item)
+		if filter_fn(item) then
+			out[#out + 1] = item
+		end
+	end)
+	return out
+end
+
+local function pick_lowest_surviving_section(sec, diss_tools, limits)
+	local best, best_cond = nil, nil
+	local candidates = collect_inventory(function(item)
+		return item:section() == sec
+	end)
+	for i = 1, #candidates do
+		local tool = candidates[i]
+		local degr = diss_tools[tool:section()]
+		if tool_survives_use(tool, degr, limits) then
+			local cond = tool:condition()
+			if not best or cond < best_cond then
+				best = tool
+				best_cond = cond
+			end
+		end
+	end
+	return best
+end
+
+local function redirect_to_lowest_stack(obj_d, note)
+	if not (CONFIG.enabled and obj_d and db.actor) then
+		return obj_d
+	end
+	local diss_tools = GetItemList("disassemble")
+	local limits = get_dit_break_limits()
+	local sec = obj_d:section()
+	local optimal = pick_lowest_surviving_section(sec, diss_tools, limits)
+	if optimal and optimal:id() ~= obj_d:id() then
+		log(string.format(
+			"%s %s cond=%.3f -> %s cond=%.3f",
+			note or "redirect",
+			sec,
+			obj_d:condition(),
+			optimal:section(),
+			optimal:condition()
+		))
+		return optimal
+	end
+	if optimal and CONFIG.debug_log then
+		log(string.format("%s %s cond=%.3f (same stack)", note or "pick", sec, optimal:condition()))
+	end
+	return optimal or obj_d
+end
+
+local function optimal_get_suitable_dtool(obj)
+	if not CONFIG.enabled then
+		return orig_get_suitable_dtool(obj)
+	end
+	if not (obj and db.actor) then
+		return orig_get_suitable_dtool(obj)
+	end
+
+	-- Upstream (DIT / autolooter fix / vanilla) picks the tool *type* for this item.
+	local type_pick = orig_get_suitable_dtool(obj)
+	if not type_pick then
+		return nil
+	end
+
+	return redirect_to_lowest_stack(type_pick, "auto")
+end
+
+local function optimal_func_disassembly(obj, obj_d)
+	if not CONFIG.enabled then
+		return orig_func_disassembly(obj, obj_d)
+	end
+
+	-- Explicit tool (drag-and-drop): keep type validation on what was dropped,
+	-- but wear the lowest stack of that same section.
+	if obj_d and obj and db.actor and item_parts.is_suitable_dtool(obj, obj_d) then
+		obj_d = redirect_to_lowest_stack(obj_d, "drag")
+	end
+
+	return orig_func_disassembly(obj, obj_d)
+end
+
+function on_game_start()
+	DORN = _G[DORN_COMMON_VERSION].load(MOD_ID)
+
+	orig_get_suitable_dtool = item_parts.get_suitable_dtool
+	orig_func_disassembly = item_parts.func_disassembly
+	item_parts.get_suitable_dtool = optimal_get_suitable_dtool
+	item_parts.func_disassembly = optimal_func_disassembly
+
+	RegisterScriptCallback("on_option_change", on_option_change)
+end

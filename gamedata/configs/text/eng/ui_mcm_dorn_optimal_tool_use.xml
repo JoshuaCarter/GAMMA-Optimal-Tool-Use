@@ -7,7 +7,7 @@
 		<text>Main</text>
 	</string>
 	<string id="ui_mcm_dorn_optimal_tool_use_main_description">
-		<text>Auto-selects the lowest-condition tool that will still survive the use. Drag-and-drop redirects wear to the lowest stack of the same tool type instead of the top-of-stack one you dragged.</text>
+		<text>Does not change which tool type GAMMA uses (grooming / swiss / multitool). Only redirects wear to the lowest-condition stack of that type that will still survive — including when you drag-and-drop a tool.</text>
 	</string>
 	<string id="ui_mcm_dorn_optimal_tool_use_enabled">
 		<text>Enabled</text>
