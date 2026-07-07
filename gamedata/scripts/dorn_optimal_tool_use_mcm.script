@@ -28,6 +28,13 @@ function on_mcm_load()
 				text = "ui_mcm_dorn_optimal_tool_use_development_section",
 				gr = {
 					{
+						id = "debug_overlay",
+						type = "check",
+						val = 1,
+						def = false,
+						hint = "dorn_optimal_tool_use_debug_overlay",
+					},
+					{
 						id = "debug_log",
 						type = "check",
 						val = 1,

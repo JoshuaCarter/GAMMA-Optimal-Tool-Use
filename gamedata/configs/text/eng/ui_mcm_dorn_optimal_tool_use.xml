@@ -18,10 +18,16 @@
 	<string id="ui_mcm_dorn_optimal_tool_use_development_section">
 		<text>Development</text>
 	</string>
+	<string id="ui_mcm_dorn_optimal_tool_use_debug_overlay">
+		<text>Enable debug overlay</text>
+	</string>
+	<string id="ui_mcm_dorn_optimal_tool_use_debug_overlay_desc">
+		<text>Show which tool was auto-selected for disassembly in the debug overlay.</text>
+	</string>
 	<string id="ui_mcm_dorn_optimal_tool_use_debug_log">
-		<text>Debug log</text>
+		<text>Enable debug logging</text>
 	</string>
 	<string id="ui_mcm_dorn_optimal_tool_use_debug_log_desc">
-		<text>Log which tool was auto-selected for disassembly.</text>
+		<text>Write which tool was auto-selected for disassembly to the game log file.</text>
 	</string>
 </string_table>
