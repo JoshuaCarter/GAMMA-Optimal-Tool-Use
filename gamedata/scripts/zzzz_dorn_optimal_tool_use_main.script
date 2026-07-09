@@ -78,24 +78,16 @@ local function tool_survives_use(tool_obj, degr_val, limits)
 	return not tool_would_break(tool_obj, degr_val, limits)
 end
 
-local function collect_inventory(filter_fn)
-	local out = {}
-	if not db.actor then
-		return out
-	end
-	db.actor:iterate_inventory(function(_, item)
-		if filter_fn(item) then
-			out[#out + 1] = item
-		end
-	end)
-	return out
-end
-
 local function pick_lowest_surviving_section(sec, diss_tools, limits)
 	local best, best_cond = nil, nil
-	local candidates = collect_inventory(function(item)
-		return item:section() == sec
-	end)
+	local candidates = {}
+	if db.actor then
+		db.actor:iterate_inventory(function(_, item)
+			if item:section() == sec then
+				candidates[#candidates + 1] = item
+			end
+		end)
+	end
 	for i = 1, #candidates do
 		local tool = candidates[i]
 		local degr = diss_tools[tool:section()]
@@ -168,6 +160,8 @@ end
 
 function on_game_start()
 	DORN = _G[DORN_COMMON_VERSION].load(MOD_ID)
+
+	on_option_change()
 
 	orig_get_suitable_dtool = item_parts.get_suitable_dtool
 	orig_func_disassembly = item_parts.func_disassembly
