@@ -36,80 +36,59 @@ local function on_option_change()
 	CONFIG.debug_log = DORN.mcm.bool(MOD_ID, "development/debug_log", false)
 end
 
-local function get_dit_break_limits()
+local function redirect_to_lowest_stack(obj_d, note)
+	if not (CONFIG.enabled and obj_d and db.actor) then
+		return obj_d
+	end
+	local diss_tools = GetItemList("disassemble")
+
+	-- read DIT break thresholds (matches Disassembly Item Tweaks is_breaking())
 	local limits = { leatherman_limit = 10, swiss_limit = 10, grooming_limit = 10 }
 	if dit_mcm and dit_mcm.get_config then
 		limits.leatherman_limit = dit_mcm.get_config("leatherman_limit") or limits.leatherman_limit
 		limits.swiss_limit = dit_mcm.get_config("swiss_limit") or limits.swiss_limit
 		limits.grooming_limit = dit_mcm.get_config("grooming_limit") or limits.grooming_limit
 	end
-	return limits
-end
 
--- Matches Disassembly Item Tweaks is_breaking() — stricter than degrade alone.
--- degr_val must already be resolved by the caller (both call sites pull it from the same
--- diss_tools table built once in redirect_to_lowest_stack) -- don't re-look it up here.
-local function tool_would_break(tool_obj, degr_val, limits)
-	if not tool_obj then
-		return true
-	end
-	if not degr_val or degr_val <= 0 then
-		return false
-	end
-	local sec = tool_obj:section()
-	local margin = 0
-	if sec == "leatherman_tool" then
-		margin = limits.leatherman_limit / 100
-	elseif sec == "swiss_knife" then
-		margin = limits.swiss_limit / 100
-	elseif sec == "grooming" then
-		margin = limits.grooming_limit / 100
-	end
-	return degr_val >= (tool_obj:condition() - margin)
-end
+	local sec = obj_d:section()
 
-local function tool_survives_use(tool_obj, degr_val, limits)
-	if not tool_obj then
-		return false
-	end
-	if degr_val and degr_val > 0 and tool_obj:condition() <= degr_val then
-		return false
-	end
-	return not tool_would_break(tool_obj, degr_val, limits)
-end
-
-local function pick_lowest_surviving_section(sec, diss_tools, limits)
-	local best, best_cond = nil, nil
+	-- pick lowest-condition stack of this section that survives the use
+	local optimal, best_cond = nil, nil
 	local candidates = {}
-	if db.actor then
-		db.actor:iterate_inventory(function(_, item)
-			if item:section() == sec then
-				candidates[#candidates + 1] = item
-			end
-		end)
-	end
+	db.actor:iterate_inventory(function(_, item)
+		if item:section() == sec then
+			candidates[#candidates + 1] = item
+		end
+	end)
 	for i = 1, #candidates do
 		local tool = candidates[i]
 		local degr = diss_tools[tool:section()]
-		if tool_survives_use(tool, degr, limits) then
+		local survives
+		if degr and degr > 0 and tool:condition() <= degr then
+			survives = false
+		elseif not degr or degr <= 0 then
+			survives = true
+		else
+			local tool_sec = tool:section()
+			local margin = 0
+			if tool_sec == "leatherman_tool" then
+				margin = limits.leatherman_limit / 100
+			elseif tool_sec == "swiss_knife" then
+				margin = limits.swiss_limit / 100
+			elseif tool_sec == "grooming" then
+				margin = limits.grooming_limit / 100
+			end
+			survives = degr < (tool:condition() - margin)
+		end
+		if survives then
 			local cond = tool:condition()
-			if not best or cond < best_cond then
-				best = tool
+			if not optimal or cond < best_cond then
+				optimal = tool
 				best_cond = cond
 			end
 		end
 	end
-	return best
-end
 
-local function redirect_to_lowest_stack(obj_d, note)
-	if not (CONFIG.enabled and obj_d and db.actor) then
-		return obj_d
-	end
-	local diss_tools = GetItemList("disassemble")
-	local limits = get_dit_break_limits()
-	local sec = obj_d:section()
-	local optimal = pick_lowest_surviving_section(sec, diss_tools, limits)
 	if optimal and optimal:id() ~= obj_d:id() then
 		log(string.format(
 			"%s %s cond=%.3f -> %s cond=%.3f",
@@ -135,7 +114,7 @@ local function optimal_get_suitable_dtool(obj)
 		return orig_get_suitable_dtool(obj)
 	end
 
-	-- Upstream (DIT / autolooter fix / vanilla) picks the tool *type* for this item.
+	-- upstream (DIT / autolooter fix / vanilla) picks the tool *type* for this item
 	local type_pick = orig_get_suitable_dtool(obj)
 	if not type_pick then
 		return nil
@@ -149,8 +128,8 @@ local function optimal_func_disassembly(obj, obj_d)
 		return orig_func_disassembly(obj, obj_d)
 	end
 
-	-- Explicit tool (drag-and-drop): keep type validation on what was dropped,
-	-- but wear the lowest stack of that same section.
+	-- explicit tool (drag-and-drop): keep type validation on what was dropped,
+	-- but wear the lowest stack of that same section
 	if obj_d and obj and db.actor and item_parts.is_suitable_dtool(obj, obj_d) then
 		obj_d = redirect_to_lowest_stack(obj_d, "drag")
 	end
